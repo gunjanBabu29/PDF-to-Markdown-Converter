@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>PDF to Markdown, entirely in your browser</title>
+<title>Folio — PDF to Markdown, entirely in your browser</title>
 <meta name="description" content="Convert PDF documents into clean, AI-ready Markdown. No upload, no server, no tracking — everything runs on your device." />
 
 <!-- Fonts -->
@@ -12,6 +12,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
 <link rel="stylesheet" href="style.css" />
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#B9791E" />
+<link rel="icon" href="icon-192.png" type="image/png" />
+<link rel="apple-touch-icon" href="icon-192.png" />
 </head>
 <body data-theme="light">
 
@@ -33,6 +39,9 @@
     </div>
 
     <nav class="navbar__actions">
+      <button id="settingsBtn" class="icon-btn" title="Settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a7.4 7.4 0 0 0 0-2l2-1.5-2-3.4-2.3.9a7.6 7.6 0 0 0-1.8-1L15 3.5h-6l-.3 2.4a7.6 7.6 0 0 0-1.8 1l-2.3-.9-2 3.4L4.6 11a7.4 7.4 0 0 0 0 2l-2 1.5 2 3.4 2.3-.9c.5.4 1.1.8 1.8 1l.3 2.4h6l.3-2.4c.7-.2 1.3-.6 1.8-1l2.3.9 2-3.4-2-1.5Z" stroke-linejoin="round"/></svg>
+      </button>
       <button id="recentBtn" class="icon-btn" title="Recent conversions (R)" aria-label="Recent conversions">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2" stroke-linecap="round"/></svg>
       </button>
@@ -48,9 +57,9 @@
 <main class="main">
 
   <section class="hero">
-    <p class="hero__eyebrow">Gunjan__Singh</p>
-    <h1 class="hero__title">Feed it a PDF.<br>Get back Markdown a machine can actually read.</h1>
-    <p class="hero__sub">Folio parses structure — headings, lists, tables, links, code — straight in your browser tab, using the document's own typography as its guide.</p>
+    <p class="hero__eyebrow">No uploads · No servers · No accounts</p>
+    <h1 class="hero__title">Feed it a stack of PDFs.<br>Get back Markdown a machine can actually read.</h1>
+    <p class="hero__sub">Folio parses structure — headings, lists, tables, links, code — straight in your browser tab, using each document's own typography as its guide. Convert one file or a whole batch at once.</p>
   </section>
 
   <!-- ============ UPLOAD CARD ============ -->
@@ -58,29 +67,26 @@
 
     <div class="ticket-edge ticket-edge--top" aria-hidden="true"></div>
 
-    <div id="dropZone" class="drop-zone" tabindex="0" role="button" aria-label="Upload a PDF file">
-      <input type="file" id="fileInput" accept="application/pdf,.pdf" hidden />
+    <div id="dropZone" class="drop-zone" tabindex="0" role="button" aria-label="Upload PDF files">
+      <input type="file" id="fileInput" accept="application/pdf,.pdf" multiple hidden />
 
       <div class="drop-zone__content" id="dropIdleState">
         <svg class="drop-zone__icon" viewBox="0 0 48 48" width="46" height="46" fill="none" stroke="currentColor" stroke-width="1.6">
           <path d="M24 6v24m0 0 8-8m-8 8-8-8" stroke-linecap="round" stroke-linejoin="round"/>
           <path d="M9 32v6a3 3 0 0 0 3 3h24a3 3 0 0 0 3-3v-6" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        <p class="drop-zone__title">Drop a PDF here, or</p>
+        <p class="drop-zone__title">Drop one or more PDFs here, or</p>
         <button type="button" id="browseBtn" class="btn btn--primary">Browse files</button>
-        <p class="drop-zone__hint">Single file · up to 500MB · stays on this device</p>
+        <p class="drop-zone__hint">Multiple files at once · up to 500MB each · stays on this device</p>
       </div>
 
-      <div class="drop-zone__content" id="dropFileState" hidden>
-        <svg class="file-badge" viewBox="0 0 40 40" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.6">
-          <path d="M9 4h16l6 6v26H9Z" stroke-linejoin="round"/>
-          <path d="M25 4v6h6" stroke-linejoin="round"/>
-        </svg>
-        <p class="file-name" id="fileName">document.pdf</p>
-        <div class="file-meta" id="fileMeta">— · —</div>
+      <div class="drop-zone__content drop-zone__content--queue" id="dropFileState" hidden>
+        <div class="file-queue" id="fileQueue"></div>
+        <button type="button" id="addMoreBtn" class="add-more-btn">+ Add more PDFs</button>
         <div class="file-actions">
-          <button type="button" id="convertBtn" class="btn btn--primary">Convert to Markdown</button>
-          <button type="button" id="clearBtn" class="btn btn--ghost">Clear</button>
+          <button type="button" id="convertBtn" class="btn btn--primary">Convert all</button>
+          <button type="button" id="retryFailedBtn" class="btn btn--ghost" hidden>Retry failed</button>
+          <button type="button" id="clearBtn" class="btn btn--ghost">Clear all</button>
         </div>
       </div>
     </div>
@@ -110,6 +116,8 @@
 
   <!-- ============ RESULT WORKSPACE ============ -->
   <section class="workspace" id="workspace" hidden>
+
+    <div class="file-switcher" id="fileSwitcher" hidden></div>
 
     <div class="workspace__toolbar">
       <div class="doc-summary">
@@ -150,12 +158,98 @@
           Copy
         </button>
         <button class="btn btn--ghost" id="downloadTxtBtn">.txt</button>
+        <button class="btn btn--ghost" id="downloadAllBtn" hidden>Download all (.zip)</button>
         <button class="btn btn--primary" id="downloadMdBtn">Download .md</button>
       </div>
     </div>
   </section>
 
 </main>
+
+<!-- ============ SETTINGS DRAWER ============ -->
+<div class="drawer" id="settingsDrawer" hidden>
+  <div class="drawer__backdrop" id="settingsBackdrop"></div>
+  <div class="drawer__panel">
+    <div class="drawer__header">
+      <h2>Settings</h2>
+      <button class="icon-btn" id="settingsClose" aria-label="Close">&times;</button>
+    </div>
+    <div class="drawer__body">
+
+      <div class="settings-group">
+        <div class="settings-row">
+          <div class="settings-row__text">
+            <span class="settings-row__label">OCR for scanned pages</span>
+            <span class="settings-row__hint">If a page has no real text (a scan or photo), run on-device OCR to recover it. Slower — only runs on pages that need it.</span>
+          </div>
+          <label class="switch"><input type="checkbox" id="settingOcr" /><span class="switch__track"></span></label>
+        </div>
+        <div class="settings-row settings-row--sub" id="ocrLangRow">
+          <div class="settings-row__text"><span class="settings-row__label">OCR language</span></div>
+          <select id="settingOcrLang" class="settings-select">
+            <option value="eng">English</option>
+            <option value="spa">Spanish</option>
+            <option value="fra">French</option>
+            <option value="deu">German</option>
+            <option value="hin">Hindi</option>
+            <option value="jpn">Japanese</option>
+            <option value="chi_sim">Chinese (Simplified)</option>
+            <option value="ara">Arabic</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-row">
+          <div class="settings-row__text">
+            <span class="settings-row__label">Strip repeated headers/footers</span>
+            <span class="settings-row__hint">Remove running headers, footers, and page numbers detected across pages.</span>
+          </div>
+          <label class="switch"><input type="checkbox" id="settingStripChrome" checked /><span class="switch__track"></span></label>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row__text">
+            <span class="settings-row__label">Page-break markers</span>
+            <span class="settings-row__hint">Insert an <code>&lt;!-- Page N --&gt;</code> comment between pages in the Markdown.</span>
+          </div>
+          <label class="switch"><input type="checkbox" id="settingPageBreaks" checked /><span class="switch__track"></span></label>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row__text">
+            <span class="settings-row__label">Heading sensitivity</span>
+            <span class="settings-row__hint">How different a font size needs to be from body text to count as a heading.</span>
+          </div>
+          <select id="settingHeadingSensitivity" class="settings-select">
+            <option value="relaxed">Relaxed</option>
+            <option value="balanced" selected>Balanced</option>
+            <option value="strict">Strict</option>
+          </select>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row__text">
+            <span class="settings-row__label">Page range</span>
+            <span class="settings-row__hint">Applied to every file in the batch, e.g. <code>1-10, 15</code>. Leave blank for all pages.</span>
+          </div>
+          <input type="text" id="settingPageRange" class="settings-input" placeholder="all pages" />
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-row">
+          <div class="settings-row__text">
+            <span class="settings-row__label">Merge batch into one file</span>
+            <span class="settings-row__hint">When converting multiple PDFs, also build one combined Markdown document alongside the individual files.</span>
+          </div>
+          <label class="switch"><input type="checkbox" id="settingMerge" /><span class="switch__track"></span></label>
+        </div>
+      </div>
+
+    </div>
+    <div class="drawer__footer">
+      <button class="btn btn--ghost btn--small" id="settingsResetBtn">Reset to defaults</button>
+    </div>
+  </div>
+</div>
 
 <!-- ============ RECENT FILES DRAWER ============ -->
 <div class="drawer" id="recentDrawer" hidden>
@@ -173,6 +267,7 @@
     </div>
   </div>
 </div>
+
 
 <!-- ============ PASSWORD MODAL ============ -->
 <div class="modal" id="passwordModal" hidden>
@@ -206,7 +301,11 @@
      page like this one. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.min.js"></script>
+<!-- Tesseract.js (OCR) is intentionally NOT loaded here — it's a large
+     library most users won't need. script.js injects it on demand, only
+     the first time a page actually requires OCR. -->
 
 <script src="script.js"></script>
 </body>
